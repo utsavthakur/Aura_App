@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:aura_app/services/auth_service.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:aura_app/widgets/custom_text_field.dart';
 import 'package:aura_app/widgets/glass_container.dart';
 import 'package:aura_app/theme/app_colors.dart';
@@ -15,6 +14,7 @@ class AuthScreen extends StatefulWidget {
 class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateMixin {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+  final _usernameController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
   
   bool _isLogin = true;
@@ -40,6 +40,7 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
   void dispose() {
     _emailController.dispose();
     _passwordController.dispose();
+    _usernameController.dispose();
     _animationController.dispose();
     super.dispose();
   }
@@ -57,21 +58,20 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
         );
       } else {
         await AuthService().signUp(
+          username: _usernameController.text.trim(),
           email: _emailController.text.trim(),
           password: _passwordController.text.trim(),
         );
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Verification link sent! Check your email.')),
+            const SnackBar(content: Text('Account created! Welcome to Aura.')),
           );
         }
       }
     } catch (e) {
-      String message = 'An unexpected error occurred';
-      if (e is AuthException) {
-        message = e.message;
-      } else {
-        message = e.toString();
+      String message = e.toString();
+      if (message.contains(':')) {
+        message = message.split(':').last.trim();
       }
       
       if (mounted) {
@@ -102,7 +102,6 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
       backgroundColor: AppColors.midnightInk,
       body: Stack(
         children: [
-          // Background "Aura" effect
           Positioned(
             top: -100,
             right: -100,
@@ -135,14 +134,13 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
                 opacity: _fadeAnimation,
                 child: GlassContainer(
                   width: double.infinity,
-                  // Removed fixed height to prevent overflow
                   borderRadius: 32,
                   child: Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 40),
                     child: Form(
                       key: _formKey,
                       child: Column(
-                        mainAxisSize: MainAxisSize.min, // Take only the space needed
+                        mainAxisSize: MainAxisSize.min,
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           const Text(
@@ -163,12 +161,21 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
                             ),
                           ),
                           const SizedBox(height: 48),
+                          if (!_isLogin)
+                            CustomTextField(
+                              controller: _usernameController,
+                              label: 'Username',
+                              icon: Icons.person_outline,
+                              validator: (v) => v!.length >= 3 ? null : 'Min 3 characters',
+                            ),
+                          if (!_isLogin) const SizedBox(height: 16),
                           CustomTextField(
                             controller: _emailController,
                             label: 'Email',
                             icon: Icons.email_outlined,
                             validator: (v) => v!.contains('@') ? null : 'Invalid email',
                           ),
+                          const SizedBox(height: 16),
                           CustomTextField(
                             controller: _passwordController,
                             label: 'Password',

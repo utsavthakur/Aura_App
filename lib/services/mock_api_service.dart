@@ -14,23 +14,23 @@ class MockApiService {
     'https://assets.mixkit.co/videos/preview/mixkit-winter-fashion-on-a-young-woman-39837-large.mp4',
   ];
 
-  Future<List<User>> _getRandomUsers(int count) async {
-    return List.generate(count, (i) => User(
-      id: i, 
+  Future<List<AppUser>> _getRandomUsers(int count) async {
+    return List.generate(count, (i) => AppUser(
+      id: i.toString(),
       username: 'user$i',
       email: 'user$i@example.com',
       bio: 'A passionate creator sharing my journey.',
-      profilePicture: 'https://picsum.photos/id/${i + 20}/200/200.jpg',
+      avatarUrl: 'https://picsum.photos/id/${i + 20}/200/200.jpg',
     ));
   }
 
-  Future<User?> getUserProfile() async {
-    return User(
-      id: 1,
+  Future<AppUser?> getUserProfile() async {
+    return AppUser(
+      id: '1',
       username: 'utsav_thakur',
       email: 'utsav@example.com',
       bio: 'Building the future of social media with AURA. 🚀',
-      profilePicture: 'https://picsum.photos/id/64/200/200.jpg',
+      avatarUrl: 'https://picsum.photos/id/64/200/200.jpg',
     );
   }
 
@@ -58,9 +58,9 @@ class MockApiService {
   Future<List<Story>> getMockStories() async {
     final users = await _getRandomUsers(15);
     return users.map((user) => Story(
-      id: user.id ?? 0,
+      id: user.id ?? '0',
       user: user,
-      mediaUrl: 'https://picsum.photos/id/${user.id ?? 10 + 50}/400/700.jpg',
+      mediaUrl: 'https://picsum.photos/id/${((int.tryParse(user.id ?? '10') ?? 10) + 50)}/400/700.jpg',
       mediaType: MediaType.IMAGE,
       createdAt: DateTime.now(),
     )).toList();

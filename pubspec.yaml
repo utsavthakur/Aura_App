@@ -40,7 +40,7 @@ dependencies:
   provider: ^6.1.1
   video_player: ^2.8.2
   chewie: ^1.7.1
-  supabase_flutter: ^2.12.2
+  # supabase_flutter: ^2.12.2 (migrated to Spring Boot API)
 
 dev_dependencies:
   flutter_test:

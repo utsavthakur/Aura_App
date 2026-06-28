@@ -1,10 +1,10 @@
 // ignore_for_file: deprecated_member_use
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
-import 'package:aura_app/home_feed.dart';
-import 'package:aura_app/explore_page.dart';
-import 'package:aura_app/profile_page.dart';
-import 'package:aura_app/settings_page.dart';
+import 'package:aura_app/screens/home/home_feed.dart';
+import 'package:aura_app/screens/explore/explore_page.dart';
+import 'package:aura_app/screens/profile/profile_page.dart';
+import 'package:aura_app/screens/settings/settings_page.dart';
 import 'package:aura_app/widgets/glass_container.dart';
 // import 'package:aura_app/widgets/asteroid_fragments.dart';
 import 'package:aura_app/theme/app_colors.dart';

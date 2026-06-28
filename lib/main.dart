@@ -1,11 +1,11 @@
 // ignore_for_file: deprecated_member_use
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
-import 'package:aura_app/home_feed.dart';
-import 'package:aura_app/explore_page.dart';
-import 'package:aura_app/profile_page.dart';
-import 'package:aura_app/settings_page.dart';
-import 'package:aura_app/messages_page.dart';
+import 'package:aura_app/screens/home/home_feed.dart';
+import 'package:aura_app/screens/explore/explore_page.dart';
+import 'package:aura_app/screens/profile/profile_page.dart';
+import 'package:aura_app/screens/settings/settings_page.dart';
+import 'package:aura_app/screens/messages/messages_page.dart';
 import 'package:aura_app/widgets/glass_container.dart';
 import 'package:aura_app/theme/app_colors.dart';
 import 'package:aura_app/core/performance/performance_monitor.dart';
@@ -13,18 +13,10 @@ import 'package:aura_app/core/error/error_handler.dart';
 import 'package:aura_app/screens/auth/auth_screen.dart';
 import 'package:aura_app/services/auth_service.dart';
 
-
 import 'package:device_preview/device_preview.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:aura_app/core/constants/supabase_config.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-
-  await Supabase.initialize(
-    url: SupabaseConfig.url,
-    anonKey: SupabaseConfig.anonKey,
-  );
 
   // Initialize performance monitoring
   PerformanceMonitor.instance;
@@ -51,6 +43,26 @@ class AuraApp extends StatefulWidget {
 }
 
 class _AuraAppState extends State<AuraApp> {
+  final AuthService _auth = AuthService();
+  bool _checkingAuth = true;
+  bool _isLoggedIn = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkLoginStatus();
+  }
+
+  Future<void> _checkLoginStatus() async {
+    final user = await _auth.tryAutoLogin();
+    if (mounted) {
+      setState(() {
+        _isLoggedIn = user != null;
+        _checkingAuth = false;
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
@@ -64,23 +76,13 @@ class _AuraAppState extends State<AuraApp> {
         scaffoldBackgroundColor: AppColors.midnightInk,
         fontFamily: 'Roboto',
       ),
-      home: StreamBuilder<AuthState>(
-        stream: AuthService().authStateChanges,
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Scaffold(
+      home: _checkingAuth
+          ? const Scaffold(
               body: Center(child: CircularProgressIndicator()),
-            );
-          }
-          
-          final session = snapshot.data?.session;
-          if (session != null) {
-            return const HomePage();
-          } else {
-            return const AuthScreen();
-          }
-        },
-      ),
+            )
+          : _isLoggedIn
+              ? const HomePage()
+              : const AuthScreen(),
     );
   }
 }
@@ -96,22 +98,20 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   late AnimationController _controller;
   int selectedIndex = 0;
 
-  // Sidebar parameters
   static const double _sidebarHeight = 420.0;
   static const double _sidebarWidth = 60.0;
   static const double _closedRight = -80.0;
   static const double _openRight = 15.0;
   static const double _travelDistance = _openRight - _closedRight; // 95.0
   
-  double _handleYAlign = 0.5; // Center the handle
-  int? _previewIndex; // For slide-to-select feedback
-  bool _isMovingSidebar = false; // Mode for moving the sidebar vertically
+  double _handleYAlign = 0.5;
+  int? _previewIndex;
+  bool _isMovingSidebar = false;
 
-  double _sidebarAlign = 1.0; // 1.0 = Right, -1.0 = Left
+  double _sidebarAlign = 1.0;
   late AnimationController _sideSwapController;
   late Animation<double> _sideSwapAnim;
   
-  // 3D Navigation State
   bool _isOverviewMode = false;
   late PageController _pageController;
 
@@ -127,13 +127,11 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   @override
   void initState() {
     super.initState();
-    // Start with sidebar open so user can see it
     _controller = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 300),
       upperBound: 1.0,
     );
-    // Side Swap Controller
     _sideSwapController = AnimationController(
         vsync: this, 
         duration: const Duration(milliseconds: 400),
@@ -144,7 +142,6 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       });
     });
     
-    // viewportFraction 1.0 for full screen
     _pageController = PageController(viewportFraction: 1.0, initialPage: selectedIndex);
   }
 
@@ -156,14 +153,11 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   }
 
   void _onDragUpdate(DragUpdateDetails details) {
-    // Horizontal (Sidebar)
     _controller.value -= details.delta.dx / _travelDistance;
     
-    // Vertical (Handle Position)
     setState(() {
       final double screenHeight = MediaQuery.of(context).size.height;
       _handleYAlign += details.delta.dy / screenHeight;
-      // Clamp to keep handle on screen (approx 10% from top/bottom margin)
       _handleYAlign = _handleYAlign.clamp(0.1, 0.9);
     });
   }
@@ -173,13 +167,11 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
 
      double velocityX = details.velocity.pixelsPerSecond.dx;
 
-     // Velocity check for fling
      if (velocityX < -365.0) {
-       _controller.forward(); // Fling open
+       _controller.forward();
      } else if (velocityX > 365.0) {
-       _controller.reverse(); // Fling closed
+       _controller.reverse();
      } else {
-       // Snap to nearest
        if (_controller.value > 0.5) {
          _controller.forward();
        } else {
@@ -198,7 +190,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
 
   @override
   Widget build(BuildContext context) {
-    return RepaintBoundary( // Optimize main content repaints
+    return RepaintBoundary(
       key: const ValueKey('home_page'),
       child: Scaffold(
         backgroundColor: AppColors.midnightInk,
@@ -207,49 +199,35 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
             builder: (context, child) {
               final double animValue = _controller.value;
               
-              // Dynamic Positioning based on _sidebarAlign (-1.0 Left to 1.0 Right)
               final double screenWidth = MediaQuery.of(context).size.width;
               
-              // Normalize align (-1 to 1) to (0 to 1)
               final double t = (_sidebarAlign + 1) / 2; 
               
-              // Define extremes
               final double leftOpen = 15.0;
               final double rightOpen = screenWidth - 15.0 - 60.0;
               final double leftClosed = -80.0;
               final double rightClosed = screenWidth + 20.0;
               
-              // Interpolate States
               final double currentOpenPos = ui.lerpDouble(leftOpen, rightOpen, t)!;
               final double currentClosedPos = ui.lerpDouble(leftClosed, rightClosed, t)!;
               
-              // Final Position based on Open/Close Animation
               final double sidebarLeft = ui.lerpDouble(currentClosedPos, currentOpenPos, animValue)!;
               
-              // Content Margins
-              // If align > 0 (Right), push content Left (Right Margin)
-              // If align < 0 (Left), push content Right (Left Margin)
               final double marginVal = ui.lerpDouble(0, 70, animValue)!;
               final double contentRightMargin = _sidebarAlign > 0 ? marginVal : 0;
               final double contentLeftMargin = _sidebarAlign < 0 ? marginVal : 0;
               
               return Stack(
                 children: [
-                  /// SLIDER BAR (Appears from right)
-                  /// SLIDER BAR
                   Positioned(
                     left: sidebarLeft,
-                    // Sidebar Top moves with Handle Alignment
-                    // Handle is at _handleYAlign * ScreenHeight
-                    // We want Center of Sidebar to be at Handle Y
                     top: (MediaQuery.of(context).size.height * _handleYAlign) - (420.0 / 2),
-                    child: RepaintBoundary( // Optimize sidebar repaints
+                    child: RepaintBoundary(
                       key: const ValueKey('sidebar'),
                       child: _glassSideBar(),
                     ),
                   ),
         
-                  /// MAIN CONTENT (Slides Away)
                   Container(
                     margin: EdgeInsets.only(
                       right: contentRightMargin,
@@ -258,18 +236,17 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                     child: SafeArea(
                       child: Stack(
                         children: [
-                          // 3D Page View with Push-Back Effect
                           AnimatedScale(
                             duration: const Duration(milliseconds: 350),
                             curve: Curves.easeOutCubic,
                             scale: _isOverviewMode ? 0.88 : 1.0,
-                            child: RepaintBoundary( // Optimize PageView repaints
+                            child: RepaintBoundary(
                               key: const ValueKey('page_view'),
                               child: PageView.builder(
                                 controller: _pageController,
                                 physics: _isOverviewMode
-                                    ? const BouncingScrollPhysics() // Allow dragging in overview
-                                    : const NeverScrollableScrollPhysics(), // Lock in normal mode
+                                    ? const BouncingScrollPhysics()
+                                    : const NeverScrollableScrollPhysics(),
                                 itemCount: icons.length,
                                 onPageChanged: (index) {
                                   setState(() {
@@ -277,7 +254,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                                   });
                                 },
                                 itemBuilder: (context, index) {
-                                  return RepaintBoundary( // Optimize individual pages
+                                  return RepaintBoundary(
                                     key: ValueKey('page_$index'),
                                     child: GestureDetector(
                                       onLongPress: () {
@@ -334,22 +311,20 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                     ),
                   ),
                   
-                  // Slider Handle (Draggable)
-                  // Animate Handle across screen
                   Positioned(
                     left: ui.lerpDouble(0, screenWidth - 60.0, t),
                     top: MediaQuery.of(context).size.height * _handleYAlign,
-                    child: RepaintBoundary( // Optimize handle repaints
+                    child: RepaintBoundary(
                       key: const ValueKey('slider_handle'),
                       child: GestureDetector(
-                        behavior: HitTestBehavior.translucent, // Ensure touches are caught even on transparent areas
+                        behavior: HitTestBehavior.translucent,
                         onPanUpdate: _onDragUpdate,
                         onPanEnd: _onDragEnd,
                         onTap: _toggle,
                         child: Container(
-                          color: Colors.transparent, // Invisible extend hit area
-                          height: 120, // Taller hit area
-                          width: 60,   // Wider hit area
+                          color: Colors.transparent,
+                          height: 120,
+                          width: 60,
                           padding: EdgeInsets.only(
                              left: _sidebarAlign > 0 ? 40 : 0, 
                              right: _sidebarAlign < 0 ? 40 : 0
@@ -370,7 +345,6 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                              ),
                              child: Center(
                                child: Icon(
-                                 // Dynamic icon based on state
                                  animValue > 0.5 
                                      ? (_sidebarAlign > 0 ? Icons.chevron_right : Icons.chevron_left)
                                      : (_sidebarAlign > 0 ? Icons.chevron_left : Icons.chevron_right), 
@@ -391,28 +365,23 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   }
 
   Widget _glassSideBar() {
-    // Reserve bottom space for the handle
     final double iconAreaHeight = 420.0 - 60.0;
     
     return GlassContainer(
-      height: 420.0, // Explicit height to force update
+      height: 420.0,
       width: _sidebarWidth,
       borderRadius: 30,
       child: Listener(
         onPointerDown: (event) {
-          // Check touch zone
           if (event.localPosition.dy > iconAreaHeight) {
-             // Bottom Zone -> Move
              setState(() => _isMovingSidebar = true);
           } else {
-             // Icon Zone -> Select
              setState(() => _isMovingSidebar = false);
           }
         },
         onPointerMove: (event) {
           final double screenWidth = MediaQuery.of(context).size.width;
           
-          // Horizontal Drag (Move Sticky Side)
           if (event.delta.dx.abs() > 0.5) { 
              setState(() {
                 _sidebarAlign += event.delta.dx / (screenWidth * 0.4); 
@@ -422,14 +391,12 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
           }
 
           if (_isMovingSidebar) {
-             // Move Sidebar Vertically (Bottom Handle)
              setState(() {
                 final double screenHeight = MediaQuery.of(context).size.height;
                 _handleYAlign += event.delta.dy / screenHeight;
                 _handleYAlign = _handleYAlign.clamp(0.1, 0.9);
              });
           } else {
-             // Select Logic (Vertical Drag on Icons)
              final double itemHeight = iconAreaHeight / icons.length;
              final int index = (event.localPosition.dy / itemHeight).floor();
              if (index >= 0 && index < icons.length && index != _previewIndex) {
@@ -440,7 +407,6 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
           }
         },
         onPointerUp: (event) {
-          // Horizontal Snap logic
           if ((_sidebarAlign.abs() - 1.0).abs() > 0.01) {
              double target = _sidebarAlign > 0 ? 1.0 : -1.0;
              if (!_sideSwapController.isAnimating) {
@@ -458,16 +424,13 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
           if (_isMovingSidebar) {
              setState(() => _isMovingSidebar = false);
           } else {
-             // Commit Selection
-             final double itemHeight = iconAreaHeight / icons.length;
-             // If preview exists use it, else calc from position
-             int index = _previewIndex ?? (event.localPosition.dy / itemHeight).floor();
+             int index = _previewIndex ?? (event.localPosition.dy / iconAreaHeight * icons.length).floor();
              
              if (index >= 0 && index < icons.length) {
                 setState(() {
                   selectedIndex = index;
                   _previewIndex = null;
-                  _controller.reverse(); // Close sidebar
+                  _controller.reverse();
                   if (_pageController.hasClients) {
                     _pageController.jumpToPage(selectedIndex);
                   }
@@ -479,17 +442,16 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         },
         child: Stack(
           children: [
-             // Icons Area (Top)
              Positioned(
                top: 0,
                left: 0,
                right: 0,
-               bottom: 60, // Leave space for handle
+               bottom: 60,
                child: Column(
                   mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                   children: List.generate(icons.length, (index) {
                     bool active = selectedIndex == index;
-                    bool hovering = _previewIndex == index; // Highlight during drag
+                    bool hovering = _previewIndex == index;
                     
                     return AnimatedContainer(
                       duration: const Duration(milliseconds: 150),
@@ -498,7 +460,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                       decoration: (active || hovering)
                           ? BoxDecoration(
                               shape: BoxShape.circle,
-                              color: AppColors.accent.withOpacity(hovering ? 0.4 : 0.2), // Brighter if hovering
+                              color: AppColors.accent.withOpacity(hovering ? 0.4 : 0.2),
                               boxShadow: [BoxShadow(color: AppColors.accent.withOpacity(0.1), blurRadius: 10)]
                             )
                           : null,
@@ -512,7 +474,6 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                ),
              ),
              
-             // Drag Handle Area (Bottom)
              Positioned(
                bottom: 0,
                left: 0,
@@ -523,7 +484,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                    height: 6,
                    width: 30,
                    decoration: BoxDecoration(
-                     color: Colors.transparent, // Invisible
+                     color: Colors.transparent,
                      borderRadius: BorderRadius.circular(3),
                    ),
                  ),

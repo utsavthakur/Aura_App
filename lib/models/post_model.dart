@@ -1,53 +1,60 @@
 import 'user_model.dart';
 
 class Post {
-  final String id;
-  final User? user; // Backend sends 'user' object
+  final String? id;
+  final AppUser? user;
   final String? caption;
-  final String? content; // Added
-  final String? userId; // Added
-  final String mediaUrl;
-  final String mediaType; // 'image' or 'video'
+  final String? content;
+  final String? userId;
+  final String? mediaUrl;
+  final String? mediaType;
+  final String? location;
   final DateTime? createdAt;
   final int likeCount;
   final int commentCount;
+  final bool likedByMe;
 
   Post({
-    required this.id,
+    this.id,
     this.user,
     this.caption,
     this.content,
     this.userId,
-    required this.mediaUrl,
-    this.mediaType = 'image',
+    this.mediaUrl,
+    this.mediaType,
+    this.location,
     this.createdAt,
     this.likeCount = 0,
     this.commentCount = 0,
+    this.likedByMe = false,
   });
 
   factory Post.fromJson(Map<String, dynamic> json) {
     return Post(
-      id: json['id'].toString(),
-      user: json['user'] != null ? User.fromJson(json['user']) : null,
-      caption: json['caption'],
+      id: json['id']?.toString(),
+      user: json['user'] != null ? AppUser.fromJson(json['user']) : null,
+      caption: json['caption'] ?? json['content'],
+      content: json['content'],
       mediaUrl: json['mediaUrl'],
       mediaType: json['mediaType'] ?? 'image',
-      createdAt: json['createdAt'] != null 
-          ? DateTime.parse(json['createdAt']) 
+      location: json['location'],
+      createdAt: json['createdAt'] != null
+          ? DateTime.parse(json['createdAt'])
           : null,
       likeCount: json['likeCount'] ?? 0,
       commentCount: json['commentCount'] ?? 0,
+      likedByMe: json['likedByMe'] ?? false,
     );
   }
 
   factory Post.fromMap(Map<String, dynamic> map) {
     return Post(
-      id: map['id'],
-      content: map['content'], // Added content mapping
-      caption: map['content'], // Map content to caption for UI compatibility
+      id: map['id']?.toString(),
+      content: map['content'],
+      caption: map['content'],
       mediaUrl: map['image_url'] ?? 'https://picsum.photos/400/600',
-      userId: map['user_id'],
-      createdAt: DateTime.parse(map['created_at']),
+      userId: map['user_id']?.toString(),
+      createdAt: map['created_at'] != null ? DateTime.parse(map['created_at']) : null,
     );
   }
 }

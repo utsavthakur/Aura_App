@@ -1,41 +1,38 @@
-class User {
-  final int? id;
+class AppUser {
+  final String? id;
   final String username;
-  final String email;
+  final String? email;
   final String? bio;
-  final String? profilePicture;
+  final String? avatarUrl;
   final DateTime? createdAt;
 
-  User({
+  AppUser({
     this.id,
     required this.username,
-    required this.email,
+    this.email,
     this.bio,
-    this.profilePicture,
+    this.avatarUrl,
     this.createdAt,
   });
 
-  factory User.fromJson(Map<String, dynamic> json) {
-    return User(
-      id: json['id'],
-      username: json['username'],
+  factory AppUser.fromJson(Map<String, dynamic> json) {
+    return AppUser(
+      id: json['id']?.toString(),
+      username: json['username'] ?? '',
       email: json['email'],
       bio: json['bio'],
-      profilePicture: json['profilePicture'],
-      createdAt: json['createdAt'] != null 
-          ? DateTime.parse(json['createdAt']) 
+      avatarUrl: json['avatarUrl'] ?? json['profilePicture'],
+      createdAt: json['createdAt'] != null
+          ? DateTime.parse(json['createdAt'])
           : null,
     );
   }
 
-  Map<String, dynamic> toJson() {
-    return {
-      'id': id,
-      'username': username,
-      'email': email,
-      'bio': bio,
-      'profilePicture': profilePicture,
-      // 'createdAt' is usually read-only from client perspective
-    };
-  }
+  Map<String, dynamic> toJson() => {
+    'id': id,
+    'username': username,
+    'email': email,
+    'bio': bio,
+    'avatarUrl': avatarUrl,
+  };
 }

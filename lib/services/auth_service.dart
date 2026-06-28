@@ -1,42 +1,67 @@
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'dart:async';
+import '../models/user_model.dart';
+import 'api_client.dart';
 
 class AuthService {
   static final AuthService _instance = AuthService._internal();
   factory AuthService() => _instance;
   AuthService._internal();
 
-  final SupabaseClient _client = Supabase.instance.client;
+  final ApiClient _client = ApiClient();
+  AppUser? _currentUser;
 
-  /// User stream to listen to auth state changes
-  Stream<AuthState> get authStateChanges => _client.auth.onAuthStateChange;
+  AppUser? get currentUser => _currentUser;
 
-  /// Get current user
-  User? get currentUser => _client.auth.currentUser;
+  Stream<AppUser?> get authStateChanges {
+    return Stream.periodic(const Duration(seconds: 1), (_) => _currentUser);
+  }
 
-  /// Sign up with email and password
-  Future<AuthResponse> signUp({
+  Future<AppUser> signUp({
+    required String username,
     required String email,
     required String password,
   }) async {
-    return await _client.auth.signUp(
-      email: email,
-      password: password,
-    );
+    final res = await _client.post('/auth/register', body: {
+      'username': username,
+      'email': email,
+      'password': password,
+    });
+
+    await _client.saveToken(res['token'] as String);
+    _currentUser = AppUser.fromJson(res);
+    return _currentUser!;
   }
 
-  /// Sign in with email and password
-  Future<AuthResponse> signIn({
+  Future<AppUser> signIn({
     required String email,
     required String password,
   }) async {
-    return await _client.auth.signInWithPassword(
-      email: email,
-      password: password,
-    );
+    final res = await _client.post('/auth/login', body: {
+      'email': email,
+      'password': password,
+    });
+
+    await _client.saveToken(res['token'] as String);
+    _currentUser = AppUser.fromJson(res);
+    return _currentUser!;
   }
 
-  /// Sign out
   Future<void> signOut() async {
-    await _client.auth.signOut();
+    await _client.deleteToken();
+    _currentUser = null;
+  }
+
+  Future<AppUser?> tryAutoLogin() async {
+    final hasToken = await _client.hasToken();
+    if (!hasToken) return null;
+
+    try {
+      final res = await _client.get('/users/me');
+      _currentUser = AppUser.fromJson(res);
+      return _currentUser;
+    } catch (_) {
+      await _client.deleteToken();
+      return null;
+    }
   }
 }

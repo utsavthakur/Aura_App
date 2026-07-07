@@ -3,7 +3,7 @@
 ## Stack
 - **Frontend**: Flutter (Dart)
 - **Backend**: Spring Boot (Java 17) on port **8080**
-- **Database**: PostgreSQL 18 on port **5433** (`aura_db`, user `aura_user`, pass `AuraPass#2024`)
+- **Database**: PostgreSQL 18 on port **5433** (`aura_db`, user `aura_user`, pass `aura_pass123`)
 - **Auth**: JWT (stored in `flutter_secure_storage`)
 - **Status**: Migrated from Supabase SDK → custom REST API
 
@@ -16,9 +16,10 @@
 - `dart analyze` passes with 0 errors
 
 ## Commands
-- Start backend: `cd backend && mvn spring-boot:run`
+- Start backend: `cd backend && mvn spring-boot:run` (starts on port 8080)
 - Run Flutter: `flutter run`
 - Analyze: `dart analyze`
+- Build backend: `mvn compile` (from `backend/`)
 
 ## Next Steps
 1. Start backend and test login/register

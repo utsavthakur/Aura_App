@@ -82,7 +82,9 @@ class _AuraAppState extends State<AuraApp> {
             )
           : _isLoggedIn
               ? const HomePage()
-              : const AuthScreen(),
+              : AuthScreen(onLogin: () {
+                  setState(() => _isLoggedIn = true);
+                }),
     );
   }
 }

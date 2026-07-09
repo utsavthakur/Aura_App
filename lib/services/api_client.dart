@@ -74,7 +74,15 @@ class ApiClient {
       if (response.body.isEmpty) return {};
       return jsonDecode(response.body) as Map<String, dynamic>;
     }
-    final body = response.body.isNotEmpty ? response.body : 'Unknown error';
-    throw HttpException('${response.statusCode}: $body');
+    String message = 'Request failed';
+    try {
+      final json = jsonDecode(response.body);
+      if (json is Map && json['message'] != null) {
+        message = json['message'] as String;
+      }
+    } catch (_) {
+      if (response.body.isNotEmpty) message = response.body;
+    }
+    throw HttpException('${response.statusCode}: $message');
   }
 }

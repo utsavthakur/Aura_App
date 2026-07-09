@@ -5,7 +5,8 @@ import 'package:aura_app/widgets/glass_container.dart';
 import 'package:aura_app/theme/app_colors.dart';
 
 class AuthScreen extends StatefulWidget {
-  const AuthScreen({super.key});
+  final VoidCallback? onLogin;
+  const AuthScreen({super.key, this.onLogin});
 
   @override
   State<AuthScreen> createState() => _AuthScreenState();
@@ -56,6 +57,9 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
           email: _emailController.text.trim(),
           password: _passwordController.text.trim(),
         );
+        if (mounted) {
+          widget.onLogin?.call();
+        }
       } else {
         await AuthService().signUp(
           username: _usernameController.text.trim(),
@@ -63,9 +67,7 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
           password: _passwordController.text.trim(),
         );
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Account created! Welcome to Aura.')),
-          );
+          widget.onLogin?.call();
         }
       }
     } catch (e) {
@@ -73,7 +75,6 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
       if (message.contains(':')) {
         message = message.split(':').last.trim();
       }
-      
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(

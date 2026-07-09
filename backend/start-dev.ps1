@@ -14,13 +14,20 @@ $services = @(
     @{ Name = "notification-service"; Port = 8086; Db = "notification_db"; Schema = "db\schema.sql" }
 )
 
-$root = Split-Path -Parent $PSScriptRoot
 $backend = $PSScriptRoot
 
 Write-Host "========================================" -ForegroundColor Cyan
 Write-Host "  Aura Backend - Start All Services" -ForegroundColor Cyan
 Write-Host "========================================" -ForegroundColor Cyan
 Write-Host ""
+
+function Start-ServiceWindow {
+    param($Name, $Dir)
+    $title = "Aura - $Name"
+    $cmd = "cd $Dir; mvn spring-boot:run"
+    $p = Start-Process powershell.exe -ArgumentList @("-NoExit", "-Command", $cmd) -WindowStyle Normal -PassThru
+    return $p.Id
+}
 
 # -----------------------------------------------------------
 # 1. Database setup
@@ -32,10 +39,10 @@ if (-not $NoDbInit) {
         $db = $svc.Db
         if (-not $db) { continue }
 
-        Write-Host "  Checking database '$db'..." -NoNewline
+        Write-Host "  Checking database '$db'... " -NoNewline
         $exists = & psql -U aura_user -h localhost -t -c "SELECT 1 FROM pg_database WHERE datname='$db'" 2>$null
         if ($LASTEXITCODE -ne 0) {
-            Write-Host " CANNOT CONNECT to PostgreSQL" -ForegroundColor Red
+            Write-Host "CANNOT CONNECT to PostgreSQL" -ForegroundColor Red
             Write-Host "  Make sure PostgreSQL is running and connection works:"
             Write-Host "    psql -U aura_user -h localhost"
             Write-Host "  Default credentials in application.yml: aura_user / aura_pass123"
@@ -45,17 +52,16 @@ if (-not $NoDbInit) {
 
         if ([string]::IsNullOrWhiteSpace($exists)) {
             & psql -U aura_user -h localhost -c "CREATE DATABASE $db" 2>$null
-            Write-Host " CREATED" -ForegroundColor Green
+            Write-Host "CREATED" -ForegroundColor Green
         } else {
-            Write-Host " EXISTS" -ForegroundColor Gray
+            Write-Host "EXISTS" -ForegroundColor Gray
         }
 
-        # Run schema
         $schemaPath = Join-Path $backend $svc.Name "src\main\resources\$($svc.Schema)"
         if (Test-Path $schemaPath) {
-            Write-Host "    Running schema for '$db'..." -NoNewline
+            Write-Host "    Running schema... " -NoNewline
             & psql -U aura_user -h localhost -d $db -f $schemaPath 2>$null
-            Write-Host " DONE" -ForegroundColor Green
+            Write-Host "DONE" -ForegroundColor Green
         }
     }
 
@@ -74,43 +80,27 @@ $pids = @()
 
 foreach ($svc in $services) {
     $name = $svc.Name
-    $port = $svc.Port
     $dir = Join-Path $backend $name
-
-    Write-Host "  Starting $name on port $port..." -NoNewline
-
-    $startInfo = New-Object System.Diagnostics.ProcessStartInfo
-    $startInfo.FileName = "powershell.exe"
-    $startInfo.Arguments = "-NoExit -Command `"cd '$dir'; mvn spring-boot:run`"
-    $startInfo.WindowStyle = [System.Diagnostics.ProcessWindowStyle]::Normal
-    $startInfo.UseShellExecute = $true
-
+    Write-Host "  Starting $name on port $($svc.Port)... " -NoNewline
     try {
-        $p = [System.Diagnostics.Process]::Start($startInfo)
-        $pids += $p.Id
-        Write-Host " OK (PID: $($p.Id))" -ForegroundColor Green
+        $pid = Start-ServiceWindow -Name $name -Dir $dir
+        $pids += $pid
+        Write-Host "OK (PID: $pid)" -ForegroundColor Green
     } catch {
-        Write-Host " FAILED: $_" -ForegroundColor Red
+        Write-Host "FAILED: $_" -ForegroundColor Red
     }
 }
 
 if (-not $NoGateway) {
     Write-Host ""
-    Write-Host "  Starting api-gateway on port 8080..." -NoNewline
-
-    $gatewayDir = Join-Path $backend "api-gateway"
-    $startInfo = New-Object System.Diagnostics.ProcessStartInfo
-    $startInfo.FileName = "powershell.exe"
-    $startInfo.Arguments = "-NoExit -Command `"cd '$gatewayDir'; mvn spring-boot:run`"
-    $startInfo.WindowStyle = [System.Diagnostics.ProcessWindowStyle]::Normal
-    $startInfo.UseShellExecute = $true
-
+    Write-Host "  Starting api-gateway on port 8080... " -NoNewline
     try {
-        $p = [System.Diagnostics.Process]::Start($startInfo)
-        $pids += $p.Id
-        Write-Host " OK (PID: $($p.Id))" -ForegroundColor Green
+        $gatewayDir = Join-Path $backend "api-gateway"
+        $pid = Start-ServiceWindow -Name "api-gateway" -Dir $gatewayDir
+        $pids += $pid
+        Write-Host "OK (PID: $pid)" -ForegroundColor Green
     } catch {
-        Write-Host " FAILED: $_" -ForegroundColor Red
+        Write-Host "FAILED: $_" -ForegroundColor Red
     }
 }
 
@@ -121,7 +111,6 @@ Write-Host "  API Gateway: http://localhost:8080" -ForegroundColor White
 Write-Host "  Close service windows to stop." -ForegroundColor Gray
 Write-Host "========================================" -ForegroundColor Cyan
 
-# Keep this script alive so the user can Ctrl+C to kill all
 Write-Host ""
 Write-Host "Press Ctrl+C to stop all services..." -ForegroundColor Gray
 try {

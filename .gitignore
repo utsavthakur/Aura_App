@@ -30,7 +30,7 @@ migrate_working_dir/
 .flutter-plugins-dependencies
 .pub-cache/
 .pub/
-/build/
+flutter_app/build/
 /coverage/
 
 # Symbolication related
@@ -40,14 +40,20 @@ app.*.symbols
 app.*.map.json
 
 # Android Studio will place build artifacts here
-/android/app/debug
-/android/app/profile
-/android/app/release
+flutter_app/android/app/debug
+flutter_app/android/app/profile
+flutter_app/android/app/release
 
-# Maven build output
-backend/target/
+# Maven / Gradle build output
+**/target/
+**/.gradle/
+**/build/
 
 # Eclipse IDE files
-android/.settings/
-android/app/.classpath
-android/app/.project
+flutter_app/android/.settings/
+flutter_app/android/app/.classpath
+flutter_app/android/app/.project
+
+# Spring
+spring.log
+spring.err

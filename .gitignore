@@ -57,3 +57,11 @@ flutter_app/android/app/.project
 # Spring
 spring.log
 spring.err
+
+# Environment / Secrets
+.env
+.env.*
+*.env.local
+
+# Docker
+docker-compose.override.yml

@@ -8,13 +8,13 @@ spring:
 
 app:
   jwt:
-    secret: 4a6f686e576f6f644469644d65616e57686174596f754d6164654d654665656c4c696b65416e496e737069726f
+    secret: ${APP_JWT_SECRET:4a6f686e576f6f644469644d65616e57686174596f754d6164654d654665656c4c696b65416e496e737069726f}
     expiration-ms: 86400000
   storage:
-    endpoint: http://localhost:9000
-    access-key: minioadmin
-    secret-key: minioadmin
-    bucket: aura-media
+    endpoint: ${APP_STORAGE_ENDPOINT:http://localhost:9000}
+    access-key: ${APP_STORAGE_ACCESS_KEY:minioadmin}
+    secret-key: ${APP_STORAGE_SECRET_KEY:minioadmin}
+    bucket: ${APP_STORAGE_BUCKET:aura-media}
 
 server:
   port: 8084

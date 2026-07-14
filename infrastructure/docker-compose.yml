@@ -1,114 +1,285 @@
-version: "3.8"
-
 services:
+
   postgres:
     image: postgres:16-alpine
     container_name: aura-postgres
+    env_file: .env
     environment:
-      POSTGRES_USER: aura_user
-      POSTGRES_PASSWORD: aura_pass123
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     ports:
       - "5432:5432"
     volumes:
       - postgres-data:/var/lib/postgresql/data
       - ./init-dbs.sh:/docker-entrypoint-initdb.d/init-dbs.sh
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U aura_user"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
       interval: 5s
       timeout: 5s
       retries: 5
+    restart: unless-stopped
+    networks:
+      - aura-network
+    deploy:
+      resources:
+        limits:
+          cpus: "1"
+          memory: 1G
 
   minio:
     image: minio/minio:latest
     container_name: aura-minio
+    env_file: .env
     environment:
-      MINIO_ROOT_USER: minioadmin
-      MINIO_ROOT_PASSWORD: minioadmin
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
     command: server /data --console-address ":9001"
     ports:
       - "9000:9000"
       - "9001:9001"
     volumes:
       - minio-data:/data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - aura-network
+    deploy:
+      resources:
+        limits:
+          cpus: "1"
+          memory: 1G
 
   api-gateway:
-    build: ../backend/api-gateway
+    build:
+      context: ../backend
+      dockerfile: api-gateway/Dockerfile
     container_name: aura-gateway
     ports:
       - "8080:8080"
+    env_file: .env
+    environment:
+      AUTH_SERVICE_URL: ${AUTH_SERVICE_URL}
+      USER_SERVICE_URL: ${USER_SERVICE_URL}
+      POST_SERVICE_URL: ${POST_SERVICE_URL}
+      MEDIA_SERVICE_URL: ${MEDIA_SERVICE_URL}
+      CHAT_SERVICE_URL: ${CHAT_SERVICE_URL}
+      NOTIFICATION_SERVICE_URL: ${NOTIFICATION_SERVICE_URL}
     depends_on:
-      - auth-service
-      - user-service
-      - post-service
-      - media-service
-      - chat-service
-      - notification-service
+      auth-service:
+        condition: service_healthy
+      user-service:
+        condition: service_healthy
+      post-service:
+        condition: service_healthy
+      media-service:
+        condition: service_healthy
+      chat-service:
+        condition: service_healthy
+      notification-service:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - aura-network
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 512M
 
   auth-service:
-    build: ../backend/auth-service
+    build:
+      context: ../backend
+      dockerfile: auth-service/Dockerfile
     container_name: aura-auth
     ports:
       - "8081:8081"
+    env_file: .env
     environment:
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/auth_db
+      SPRING_DATASOURCE_USERNAME: ${SPRING_DATASOURCE_USERNAME}
+      SPRING_DATASOURCE_PASSWORD: ${SPRING_DATASOURCE_PASSWORD}
+      APP_JWT_SECRET: ${APP_JWT_SECRET}
     depends_on:
       postgres:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8081/actuator/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - aura-network
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 512M
 
   user-service:
-    build: ../backend/user-service
+    build:
+      context: ../backend
+      dockerfile: user-service/Dockerfile
     container_name: aura-users
     ports:
       - "8082:8082"
+    env_file: .env
     environment:
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/user_db
+      SPRING_DATASOURCE_USERNAME: ${SPRING_DATASOURCE_USERNAME}
+      SPRING_DATASOURCE_PASSWORD: ${SPRING_DATASOURCE_PASSWORD}
+      APP_JWT_SECRET: ${APP_JWT_SECRET}
     depends_on:
       postgres:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8082/actuator/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - aura-network
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 512M
 
   post-service:
-    build: ../backend/post-service
+    build:
+      context: ../backend
+      dockerfile: post-service/Dockerfile
     container_name: aura-posts
     ports:
       - "8083:8083"
+    env_file: .env
     environment:
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/post_db
+      SPRING_DATASOURCE_USERNAME: ${SPRING_DATASOURCE_USERNAME}
+      SPRING_DATASOURCE_PASSWORD: ${SPRING_DATASOURCE_PASSWORD}
+      APP_JWT_SECRET: ${APP_JWT_SECRET}
     depends_on:
       postgres:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8083/actuator/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - aura-network
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 512M
 
   media-service:
-    build: ../backend/media-service
+    build:
+      context: ../backend
+      dockerfile: media-service/Dockerfile
     container_name: aura-media
     ports:
       - "8084:8084"
+    env_file: .env
     environment:
       APP_STORAGE_ENDPOINT: http://minio:9000
+      APP_STORAGE_ACCESS_KEY: ${APP_STORAGE_ACCESS_KEY}
+      APP_STORAGE_SECRET_KEY: ${APP_STORAGE_SECRET_KEY}
+      APP_STORAGE_BUCKET: aura-media
+      APP_JWT_SECRET: ${APP_JWT_SECRET}
     depends_on:
-      - minio
+      minio:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8084/actuator/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - aura-network
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 512M
 
   chat-service:
-    build: ../backend/chat-service
+    build:
+      context: ../backend
+      dockerfile: chat-service/Dockerfile
     container_name: aura-chat
     ports:
       - "8085:8085"
+    env_file: .env
     environment:
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/chat_db
+      SPRING_DATASOURCE_USERNAME: ${SPRING_DATASOURCE_USERNAME}
+      SPRING_DATASOURCE_PASSWORD: ${SPRING_DATASOURCE_PASSWORD}
+      APP_JWT_SECRET: ${APP_JWT_SECRET}
     depends_on:
       postgres:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8085/actuator/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - aura-network
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 512M
 
   notification-service:
-    build: ../backend/notification-service
+    build:
+      context: ../backend
+      dockerfile: notification-service/Dockerfile
     container_name: aura-notifications
     ports:
       - "8086:8086"
+    env_file: .env
     environment:
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/notification_db
+      SPRING_DATASOURCE_USERNAME: ${SPRING_DATASOURCE_USERNAME}
+      SPRING_DATASOURCE_PASSWORD: ${SPRING_DATASOURCE_PASSWORD}
+      APP_JWT_SECRET: ${APP_JWT_SECRET}
     depends_on:
       postgres:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8086/actuator/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - aura-network
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 512M
 
 volumes:
   postgres-data:
   minio-data:
+
+networks:
+  aura-network:
+    driver: bridge
